@@ -1,8 +1,8 @@
 import React, { Component } from 'react';
 import { isAuthenticated } from '../auth';
-import { read, update } from './apiUser';
+import { read, update, updateUser } from './apiUser';
 import { Redirect } from 'react-router-dom';
-//import DefaultProfile from "../images/avatar.jpg";
+import DefaultProfile from '../images/avatar.jpg';
 
 class EditProfile extends Component {
   constructor() {
@@ -14,9 +14,9 @@ class EditProfile extends Component {
       password: '',
       redirectToProfile: false,
       error: '',
-      fileSize: 0
-      // loading: false
-      // about: ""
+      fileSize: 0,
+      loading: false,
+      about: ''
     };
   }
 
@@ -29,9 +29,9 @@ class EditProfile extends Component {
         this.setState({
           id: data._id,
           name: data.name,
-          email: data.email
-          // error: "",
-          // about: data.about
+          email: data.email,
+          error: '',
+          about: data.about
         });
       }
     });
@@ -50,16 +50,19 @@ class EditProfile extends Component {
       return false;
     }
     if (name.length === 0) {
-      this.setState({ error: 'Name is required' });
+      this.setState({ error: 'Name is required', loading: false });
       return false;
     }
     // email@domain.com
     if (!/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email)) {
-      this.setState({ error: 'A valid Email is required' });
+      this.setState({ error: 'A valid Email is required', loading: false });
       return false;
     }
     if (password.length >= 1 && password.length <= 5) {
-      this.setState({ error: 'Password must be at least 6 characters long' });
+      this.setState({
+        error: 'Password must be at least 6 characters long',
+        loading: false
+      });
       return false;
     }
     return true;
@@ -84,14 +87,16 @@ class EditProfile extends Component {
       update(userId, token, this.userData).then(data => {
         if (data.error) this.setState({ error: data.error });
         else
-          this.setState({
-            redirectToProfile: true
+          updateUser(data, () => {
+            this.setState({
+              redirectToProfile: true
+            });
           });
       });
     }
   };
 
-  signupForm = (name, email, password) => (
+  signupForm = (name, email, password, about) => (
     <form>
       <div className='form-group'>
         <label className='text-muted'>Profile Photo</label>
@@ -120,6 +125,16 @@ class EditProfile extends Component {
           className='form-control'
           value={email}
         />
+
+        <div className='form-group'>
+          <label className='text-muted'>About</label>
+          <textarea
+            onChange={this.handleChange('about')}
+            type='text'
+            className='form-control'
+            value={about}
+          />
+        </div>
       </div>
       <div className='form-group'>
         <label className='text-muted'>Password</label>
@@ -144,12 +159,19 @@ class EditProfile extends Component {
       password,
       redirectToProfile,
       error,
-      loading
+      loading,
+      about
     } = this.state;
 
     if (redirectToProfile) {
       return <Redirect to={`/user/${id}`} />;
     }
+
+    const photoUrl = id
+      ? `${
+          process.env.REACT_APP_API_URL
+        }/user/photo/${id}?{new Date().getTime()}`
+      : DefaultProfile;
 
     return (
       <div className='container'>
@@ -169,7 +191,15 @@ class EditProfile extends Component {
           ''
         )}
 
-        {this.signupForm(name, email, password)}
+        <img
+          style={{ height: '200px', width: 'auto' }}
+          className='img-thumbnail'
+          src={photoUrl}
+          onError={i => (i.target.src = `${DefaultProfile}`)}
+          alt={name}
+        />
+
+        {this.signupForm(name, email, password, about)}
       </div>
     );
   }
